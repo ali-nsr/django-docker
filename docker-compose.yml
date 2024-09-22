@@ -1,0 +1,59 @@
+
+services:
+  django:
+    container_name: django
+    build: .
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - main
+    restart: always
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    networks:
+      - main
+    ports:
+      - "6379:6379"
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning
+
+  celery:
+    container_name: celery
+    build: .
+    command: celery -A config worker --beat -l INFO -Q celery,celery:1,celery:2,celery:3
+    networks:
+      - main
+    restart: always
+    depends_on:
+      - django
+      - redis
+
+  postgres:
+    container_name: postgres
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      - main
+    ports:
+      - "5432:5432"
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+
+networks:
+  main:
+
+volumes:
+  postgres_data:
